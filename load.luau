@@ -1,16 +1,16 @@
 --[[
 	TempHub-Headless entry for players — HttpGet only (no readfile).
 
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/OWNER/REPO/main/TempHub-Headless/load.luau"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/9Store/Headless_UI/refs/heads/main/load.luau"))()
 
-	Upload to the same GitHub folder:
-	  - load.luau          (this file — set CDN below)
+	Same folder on GitHub:
+	  - load.luau
 	  - TempHubHeadless.luau
 
-	Optional: getgenv().TempHubHeadlessCDN = "https://…/TempHub-Headless/"
+	Optional override: getgenv().TempHubHeadlessCDN = "https://…/"
 ]]
 
-local CDN = "" -- e.g. "https://raw.githubusercontent.com/OWNER/REPO/main/TempHub-Headless/"
+local CDN = "https://raw.githubusercontent.com/9Store/Headless_UI/refs/heads/main/"
 
 local genv = getgenv and getgenv() or _G
 if type(genv.TempHubHeadlessCDN) == "string" and genv.TempHubHeadlessCDN ~= "" then
