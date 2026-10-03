@@ -7,7 +7,7 @@
 ]]
 
 local genv = getgenv and getgenv() or _G
-local BUILD = 12
+local BUILD = 13
 
 if type(genv.TempHubHeadless) == "table" and genv._THHeadlessBuild == BUILD then
 	return genv.TempHubHeadless
@@ -61,8 +61,39 @@ local FONT_SEMI = Font.new(FONT_FAMILY, Enum.FontWeight.SemiBold, Enum.FontStyle
 local LOGO_PATHS = {
 	"TempHub-UI/261b4a73-267f-449e-89eb-4d487d75ce3a.png",
 	"TempHub-UI\\261b4a73-267f-449e-89eb-4d487d75ce3a.png",
+	"TempHub-Headless/temphub-logo.png",
+	"TempHub-Headless\\temphub-logo.png",
 	"temp/temphub-logo.png",
 }
+
+local function withSlash(base)
+	if type(base) ~= "string" or base == "" then
+		return nil
+	end
+	if not string.find(base, "/$") then
+		return base .. "/"
+	end
+	return base
+end
+
+local function httpGet(url, minLen)
+	if type(url) ~= "string" or url == "" then
+		return nil
+	end
+	minLen = tonumber(minLen) or 500
+	local ok, src = pcall(function()
+		return game:HttpGet(url)
+	end)
+	if not (ok and type(src) == "string") then
+		ok, src = pcall(function()
+			return game:HttpGetAsync(url)
+		end)
+	end
+	if ok and type(src) == "string" and #src >= minLen then
+		return src
+	end
+	return nil
+end
 
 local TONE = {
 	Accent = ACCENT,
@@ -195,10 +226,63 @@ local function resolveLogo()
 	if type(gca) ~= "function" then
 		return nil
 	end
-	for _, path in ipairs(LOGO_PATHS) do
+	local cachePath = "temp/temphub-logo.png"
+	local function tryPath(path)
 		local ok, asset = pcall(gca, path)
 		if ok and type(asset) == "string" and asset ~= "" then
 			return asset
+		end
+		return nil
+	end
+	for _, path in ipairs(LOGO_PATHS) do
+		local asset = tryPath(path)
+		if asset then
+			return asset
+		end
+	end
+	-- Players: no local png — HttpGet from Headless CDN into temp/, then getcustomasset.
+	local urls = {}
+	local seen = {}
+	local function addUrl(u)
+		if type(u) ~= "string" or u == "" or seen[u] then
+			return
+		end
+		seen[u] = true
+		urls[#urls + 1] = u
+	end
+	addUrl(genv.TempHubLogoUrl)
+	local function addBase(base)
+		base = withSlash(base)
+		if not base then
+			return
+		end
+		addUrl(base .. "temphub-logo.png")
+		addUrl(base .. "261b4a73-267f-449e-89eb-4d487d75ce3a.png")
+	end
+	addBase(genv.TempHubHeadlessReleaseBase)
+	addBase(genv.TempHubHeadlessCDN)
+	addBase(genv.TempHubReleaseBase)
+	addBase("https://raw.githubusercontent.com/9Store/Headless_UI/refs/heads/main/")
+	local writeFile = envFn("writefile")
+	local makeFolder = envFn("makefolder") or envFn("mkdir")
+	if type(writeFile) ~= "function" then
+		return nil
+	end
+	for _, url in ipairs(urls) do
+		local src = httpGet(url, 500)
+		if src then
+			pcall(function()
+				if type(makeFolder) == "function" then
+					makeFolder("temp")
+				end
+			end)
+			local ok = pcall(writeFile, cachePath, src)
+			if ok then
+				local asset = tryPath(cachePath)
+				if asset then
+					return asset
+				end
+			end
 		end
 	end
 	return nil
